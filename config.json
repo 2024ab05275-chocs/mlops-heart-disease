@@ -1,0 +1,21 @@
+{
+  "data": {
+    "raw": {
+      "url": "https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data",
+      "base_path": "./data/raw",
+      "file_name": "heart_disease_raw.csv",
+      "file_path": "./data/raw/heart_disease_raw.csv"
+    },
+    "processed": {
+      "base_path": "./data/processed",
+      "file_name": "heart_disease_processed.csv",
+      "file_path": "./data/processed/heart_disease_processed.csv"
+    }
+  },
+  "schema": {
+    "columns": [
+      "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+      "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
+    ]
+  }
+}
