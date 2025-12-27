@@ -20,8 +20,6 @@ PROCESSED_FILE_PATH = Path(config["data"]["processed"]["file_path"])
 OUTPUT_FILENAME = config["data"]["raw"]["file_name"]
 COLUMNS = config["schema"]["columns"]
 
-print(RAW_FILE_PATH)
-
 ############################################################
 # Obtain the dataset (Already downloaded from source)
 ############################################################

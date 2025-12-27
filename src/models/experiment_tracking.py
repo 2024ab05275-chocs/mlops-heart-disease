@@ -42,6 +42,10 @@ numerical_features = [
 ############################################################
 # MLflow setup
 ############################################################
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+MLFLOW_TRACKING_DIR = PROJECT_ROOT / "mlruns"
+
+mlflow.set_tracking_uri(str(MLFLOW_TRACKING_DIR))
 mlflow.set_experiment("Heart_Disease_Classification")
 
 ############################################################
