@@ -54,7 +54,7 @@ jobs:
       - run: bash scripts/run_lint.sh
 
 #########################################################
-# 3. TEST
+# 3. UNIT TEST
 #########################################################
   test:
     needs: lint
@@ -66,11 +66,13 @@ jobs:
           python-version: "3.10"
       - run: pip install -r requirements.txt
       - run: pytest tests/test_download_data.py -v
+      - run: pytest tests/test_logistic_pipeline.py -v
+      - run: pytest tests/test_random_forest.py -v
 
 #########################################################
-# 4. TRAIN
+# 4. Data Preprocessing
 #########################################################
-  train:
+  data-preprocess:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -82,13 +84,49 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m src.data.data_acquisition
       - run: python -m src.data.preprocess
-      - run: python -m src.models.train_evaluate_logistic_regression
-      - run: python -m src.models.train_evaluate_random_forest
 
 #########################################################
-# 5. EVALUATE
+# 5. TRAIN & Evaluate
 #########################################################
-  evaluate:
+  train:
+    needs: data-preprocess
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -r requirements.txt
+      - run: python -m src.models.train_evaluate_logistic_regression
+      - run: python -m src.models.train_evaluate_random_forest
+  
+  #########################################################
+  # 6. Experiment Tracking
+  #########################################################
+  experiment-Tracking:
+    needs: train
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Experiment Tracking
+        run: python -m src.models.experiment_tracking
+
+
+#########################################################
+# 7. SAVE MODEL
+#########################################################
+  save-model:
     needs: train
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -98,11 +136,10 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install -r requirements.txt
-      - run: python -m src.models.experiment_tracking
       - run: python -m src.models.save_model
 
 #########################################################
-# 6. BUILD (Push to GHCR)
+# 8. BUILD (Push to GHCR)
 #########################################################
   build:
     needs: evaluate
@@ -125,7 +162,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
 #########################################################
-# 7. DEPLOY
+# 9. DEPLOY
 #########################################################
   deploy:
     needs: build
@@ -142,7 +179,7 @@ jobs:
           docker run -d --rm -p 8000:8000 --name heart-api ${{ env.IMAGE_NAME }}:latest
 
 ########################################################
-# 8. API SMOKE TEST
+# 10. API SMOKE TEST
 #########################################################
   api-smoke-test:
     needs: deploy
@@ -208,7 +245,7 @@ jobs:
 
 
 #########################################################
-# 9. MONITORING & LOGGING
+# 11. MONITORING & LOGGING
 #########################################################
   monitoring:
     needs: api-smoke-test
