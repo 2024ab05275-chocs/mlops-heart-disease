@@ -76,24 +76,49 @@ for filename in os.listdir(PROCESSED_BASE_PATH):
 df.to_csv(PROCESSED_FILE_PATH, index=False)
 print(f"\nPreprocessed dataset saved to: {PROCESSED_FILE_PATH}")
 
-############################################################
-# c. Exploratory Data Analysis:
-############################################################
+# --------------------------------------------------------
+# Ensure screenshots directory exists
+# --------------------------------------------------------
+SCREENSHOT_DIR = "screenshots"
+os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+
+# --------------------------------------------------------
+# c. Exploratory Data Analysis: Class Distribution
+# --------------------------------------------------------
+plt.figure(figsize=(6, 4))
 sns.countplot(x="target", data=df)
 plt.title("Class Distribution (Heart Disease)")
-plt.show()
+plt.xlabel("Target")
+plt.ylabel("Count")
+plt.tight_layout()
+plt.savefig(f"{SCREENSHOT_DIR}/class_distribution.png")
+plt.close()
 
-############################################################
+# --------------------------------------------------------
 # d. Feature Distribution
-############################################################
-df[["age", "trestbps", "chol", "thalach"]].hist(bins=20, figsize=(10, 6))
-plt.suptitle("Feature Distributions")
-plt.show()
+# --------------------------------------------------------
+num_features = ["age", "trestbps", "chol", "thalach"]
 
-############################################################
-# e. Corelation Heat Map
-############################################################
+df[num_features].hist(bins=20, figsize=(10, 6))
+plt.suptitle("Feature Distributions")
+plt.tight_layout()
+plt.savefig(f"{SCREENSHOT_DIR}/feature_distributions.png")
+plt.close()
+
+# --------------------------------------------------------
+# e. Correlation Heatmap
+# --------------------------------------------------------
 plt.figure(figsize=(12, 8))
-sns.heatmap(df.corr(), cmap="coolwarm", annot=False)
+corr = df.select_dtypes(include="number").corr()
+
+sns.heatmap(
+    corr,
+    cmap="coolwarm",
+    annot=False,
+    linewidths=0.5
+)
+
 plt.title("Feature Correlation Heatmap")
-plt.show()
+plt.tight_layout()
+plt.savefig(f"{SCREENSHOT_DIR}/correlation_heatmap.png")
+plt.close()
