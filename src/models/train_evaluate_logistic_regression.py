@@ -1,3 +1,4 @@
+import os
 import pickle
 import pandas as pd
 from pathlib import Path
@@ -97,13 +98,30 @@ fpr, tpr, _ = roc_curve(y_test, y_prob)
 roc_auc = auc(fpr, tpr)
 
 
+# -----------------------------
+# Ensure folder exists
+# -----------------------------
+output_dir = "screenshots"
+os.makedirs(output_dir, exist_ok=True)  # Creates folder if it doesn't exist
+
+# -----------------------------
+# Plot ROC curve
+# -----------------------------
 plt.plot(fpr, tpr, label=f"ROC AUC = {roc_auc:.2f}")
 plt.plot([0, 1], [0, 1], "--")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
 plt.title("ROC Curve – Logistic Regression")
 plt.legend()
-plt.show()
+
+# -----------------------------
+# Save plot (overwrites if exists)
+# -----------------------------
+output_path = os.path.join(output_dir, "roc_curve_logistic.png")
+plt.savefig(output_path)  # Will overwrite if file already exists
+plt.close()
+
+print(f"✅ ROC curve saved to {output_path}")
 
 
 def generate_model_comments(model_name, metrics):
