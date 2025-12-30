@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: ["main"]
 
+# 🔐 Required for GHCR
+permissions:
+  contents: read
+  packages: write
+
+# 🐳 Shared image name
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}/heart-disease-api
+
 #########################################################
 # 1. DEPENDENCIES
 #########################################################
@@ -93,7 +102,7 @@ jobs:
       - run: python -m src.models.save_model
 
 #########################################################
-# 6. BUILD
+# 6. BUILD (Push to GHCR)
 #########################################################
   build:
     needs: evaluate
@@ -101,31 +110,19 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      # 🔨 Build image and load it locally
-      - name: Build Docker image
+      - name: Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: heart-disease-api:latest
-          load: true   # IMPORTANT: makes image available to docker run
-
-      # ▶️ Run the container
-      - name: Run Docker container
-        run: |
-          docker run -d --rm -p 8000:8000 --name heart-api heart-disease-api:latest
-
-      # 🧪 Optional: health check
-      - name: Check API
-        run: |
-          sleep 5
-          curl -f http://localhost:8000/health || exit 1
-
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
 #########################################################
 # 7. DEPLOY
@@ -133,21 +130,16 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          tags: heart-disease-api:latest
-          load: true
-
-      - name: Run container
-        run: docker run -d --rm -p 8000:8000 heart-disease-api:latest
+      - name: Pull & Run API
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:latest
+          docker run -d --rm -p 8000:8000 --name heart-api ${{ env.IMAGE_NAME }}:latest
 
 #########################################################
 # 8. API SMOKE TEST
@@ -156,24 +148,48 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
     steps:
-      - run: curl -sf http://localhost:8000/docs
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Run API for testing
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:latest
+          docker run -d --rm -p 8000:8000 --name heart-api-test ${{ env.IMAGE_NAME }}:latest
+          sleep 10
+
+      - name: Smoke Test API
+        run: curl -sf http://localhost:8000/docs
 
 #########################################################
-# 9. MONITORING
+# 9. MONITORING & LOGGING
 #########################################################
   monitoring:
     needs: api-smoke-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
     steps:
-      - run: curl -f http://localhost:8000/metrics
-      - if: always()
-        run: docker logs heart-disease-api-container > api_logs.txt
-      - if: always()
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Run API for metrics
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:latest
+          docker run -d --rm -p 8000:8000 --name heart-api-metrics ${{ env.IMAGE_NAME }}:latest
+          sleep 10
+
+      - name: Fetch Prometheus metrics
+        run: curl -f http://localhost:8000/metrics
+
+      - name: Collect container logs
+        if: always()
+        run: docker logs heart-api-metrics > api_logs.txt
+
+      - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: api-logs
           path: api_logs.txt
-      - if: always()
-        run: docker stop heart-disease-api-container || true
