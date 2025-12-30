@@ -85,6 +85,8 @@ bash scripts/run_lint.sh
 
 echo "Step 2: Running tests"
 pytest tests/test_download_data.py -v
+pytest tests/test_logistic_pipeline.py -v
+pytest tests/test_random_forest.py -v
 
 #########################################################
 # 6. Docker Build & Run
