@@ -30,11 +30,12 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
 print(RAW_BASE_PATH)
 
+
 def download_data():
     if os.path.exists(OUTPUT_PATH):
         print(f"\n[INFO] Dataset already exists at {OUTPUT_PATH}")
         return
-    
+
     # Delete all CSV files except the expected raw file
     for filename in os.listdir(RAW_BASE_PATH):
         file_path = os.path.join(RAW_BASE_PATH, filename)

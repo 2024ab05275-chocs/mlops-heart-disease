@@ -25,7 +25,7 @@ COLUMNS = config["schema"]["columns"]
 ############################################################
 df = pd.read_csv(RAW_FILE_PATH, names=COLUMNS)
 print("\n")
-print(tabulate(df.head(), headers='keys', tablefmt='psql', showindex=False))
+print(tabulate(df.head(), headers="keys", tablefmt="psql", showindex=False))
 
 
 ############################################################
@@ -35,14 +35,14 @@ print(tabulate(df.head(), headers='keys', tablefmt='psql', showindex=False))
 
 # We convert this into a binary classification problem:
 ############################################################
-df['target'] = (df['target'] > 0).astype(int)
+df["target"] = (df["target"] > 0).astype(int)
 
 ############################################################
 # Data Cleaning and preprocessing
 # a. Missing Values
 #   - In the original UCI data, missing values are marked with ?.
 ############################################################
-df.replace('?', pd.NA, inplace=True)
+df.replace("?", pd.NA, inplace=True)
 df = df.apply(pd.to_numeric)
 
 null_counts = df.isnull().sum().reset_index()
@@ -79,21 +79,21 @@ print(f"\nPreprocessed dataset saved to: {PROCESSED_FILE_PATH}")
 ############################################################
 # c. Exploratory Data Analysis:
 ############################################################
-sns.countplot(x='target', data=df)
-plt.title('Class Distribution (Heart Disease)')
+sns.countplot(x="target", data=df)
+plt.title("Class Distribution (Heart Disease)")
 plt.show()
 
 ############################################################
 # d. Feature Distribution
 ############################################################
-df[['age', 'trestbps', 'chol', 'thalach']].hist(bins=20, figsize=(10,6))
-plt.suptitle('Feature Distributions')
+df[["age", "trestbps", "chol", "thalach"]].hist(bins=20, figsize=(10, 6))
+plt.suptitle("Feature Distributions")
 plt.show()
 
 ############################################################
 # e. Corelation Heat Map
 ############################################################
-plt.figure(figsize=(12,8))
-sns.heatmap(df.corr(), cmap='coolwarm', annot=False)
-plt.title('Feature Correlation Heatmap')
+plt.figure(figsize=(12, 8))
+sns.heatmap(df.corr(), cmap="coolwarm", annot=False)
+plt.title("Feature Correlation Heatmap")
 plt.show()

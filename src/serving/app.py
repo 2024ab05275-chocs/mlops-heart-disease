@@ -16,9 +16,21 @@ with open("models/random_forest_model.pkl", "rb") as f:
     rf_model = pickle.load(f)
 
 FEATURES = [
-    'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg',
-    'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'
+    "age",
+    "sex",
+    "cp",
+    "trestbps",
+    "chol",
+    "fbs",
+    "restecg",
+    "thalach",
+    "exang",
+    "oldpeak",
+    "slope",
+    "ca",
+    "thal",
 ]
+
 
 class HeartDiseaseInput(BaseModel):
     age: int
@@ -35,9 +47,11 @@ class HeartDiseaseInput(BaseModel):
     ca: int
     thal: int
 
+
 def prepare_input(data: HeartDiseaseInput):
     X = np.array([[getattr(data, f) for f in FEATURES]])
     return scaler.transform(X)
+
 
 # -----------------------------
 # Logistic Regression Endpoint
@@ -51,8 +65,9 @@ def predict_logistic(data: HeartDiseaseInput):
     return {
         "model": "Logistic Regression",
         "prediction": prediction,
-        "confidence": round(confidence, 3)
+        "confidence": round(confidence, 3),
     }
+
 
 # -----------------------------
 # Random Forest Endpoint
@@ -66,5 +81,5 @@ def predict_random_forest(data: HeartDiseaseInput):
     return {
         "model": "Random Forest",
         "prediction": prediction,
-        "confidence": round(confidence, 3)
+        "confidence": round(confidence, 3),
     }

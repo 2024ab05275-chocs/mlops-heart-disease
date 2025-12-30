@@ -1,7 +1,6 @@
 import os
 import pytest
 from unittest import mock
-from pathlib import Path
 
 # Import function under test
 from src.data.data_acquisition import download_data, OUTPUT_FILENAME
@@ -18,14 +17,9 @@ def temp_raw_dir(tmp_path, monkeypatch):
 
     output_path = raw_dir / OUTPUT_FILENAME
 
-    monkeypatch.setattr(
-        "src.data.data_acquisition.RAW_BASE_PATH",
-        raw_dir
-    )
-    monkeypatch.setattr(
-        "src.data.data_acquisition.OUTPUT_PATH",
-        str(output_path)
-    )
+    monkeypatch.setattr("src.data.data_acquisition.RAW_BASE_PATH", raw_dir)
+    monkeypatch.setattr("src.data.data_acquisition.OUTPUT_PATH",
+                        str(output_path))
 
     return raw_dir, output_path
 
@@ -63,7 +57,6 @@ def test_successful_download(mock_urlretrieve, temp_raw_dir):
 
     mock_urlretrieve.assert_called_once()
     assert os.path.exists(output_path)
-
 
 
 @mock.patch("urllib.request.urlretrieve")

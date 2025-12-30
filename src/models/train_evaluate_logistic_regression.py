@@ -35,8 +35,8 @@ COLUMNS = config["schema"]["columns"]
 
 df = pd.read_csv(PROCESSED_FILE_PATH)
 
-X = df.drop('target', axis=1)   
-y = df['target']
+X = df.drop("target", axis=1)
+y = df["target"]
 
 ############################################################
 # 4.2 Scaling
@@ -44,68 +44,67 @@ y = df['target']
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-X_scaled_df = pd.DataFrame(
-    X_scaled,
-    columns=X.columns
-)
+X_scaled_df = pd.DataFrame(X_scaled, columns=X.columns)
 
 # Save scaler
 with open("data/processed/standard_scaler.pkl", "wb") as f:
     pickle.dump(scaler, f)
 
-X_scaled_df.to_csv(
-    f"{PROCESSED_BASE_PATH}/heart_disease_scaled.csv",
-    index=False
-)
+X_scaled_df.to_csv(f"{PROCESSED_BASE_PATH}/heart_disease_scaled.csv",
+                   index=False)
 
 ############################################################
 # Logistic Regression
 ############################################################
 log_reg = LogisticRegression(max_iter=1000)
 scores_lr = cross_validate(
-                    log_reg, X_scaled, y,
-                    cv=5,
-                    scoring=['accuracy', 'precision', 'recall', 'roc_auc']
-                    )
+    log_reg, X_scaled, y, cv=5, scoring=["accuracy",
+                                         "precision",
+                                         "recall",
+                                         "roc_auc"]
+)
 
 
 lr_metrics = {
-    'accuracy': scores_lr['test_accuracy'].mean(),
-    'precision': scores_lr['test_precision'].mean(),
-    'recall': scores_lr['test_recall'].mean(),
-    'roc_auc': scores_lr['test_roc_auc'].mean()
+    "accuracy": scores_lr["test_accuracy"].mean(),
+    "precision": scores_lr["test_precision"].mean(),
+    "recall": scores_lr["test_recall"].mean(),
+    "roc_auc": scores_lr["test_roc_auc"].mean(),
 }
 
-print(f"\n-------------------------------------------------")
+print("\n-------------------------------------------------")
 print("Logistic Regression Metrics:")
-print(f"-------------------------------------------------\n")
+print("-------------------------------------------------\n")
 
 for metric, value in lr_metrics.items():
     print(f"* {metric}: {value:.3f}")
 
-print(f"-------------------------------------------------\n")
+print("-------------------------------------------------\n")
 
 ############################################################
 # ROC Curve - Logistic Regression
 ############################################################
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=42
+)
 
 
 log_reg.fit(X_train, y_train)
-y_prob = log_reg.predict_proba(X_test)[:,1]
+y_prob = log_reg.predict_proba(X_test)[:, 1]
 
 
 fpr, tpr, _ = roc_curve(y_test, y_prob)
 roc_auc = auc(fpr, tpr)
 
 
-plt.plot(fpr, tpr, label=f'ROC AUC = {roc_auc:.2f}')
-plt.plot([0,1],[0,1],'--')
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('ROC Curve – Logistic Regression')
+plt.plot(fpr, tpr, label=f"ROC AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], "--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve – Logistic Regression")
 plt.legend()
 plt.show()
+
 
 def generate_model_comments(model_name, metrics):
     """
@@ -117,75 +116,78 @@ def generate_model_comments(model_name, metrics):
         'accuracy', 'precision', 'recall', 'roc_auc'
     """
 
-    acc = metrics['test_accuracy'].mean()
-    prec = metrics['test_precision'].mean()
-    rec = metrics['test_recall'].mean()
-    auc = metrics['test_roc_auc'].mean()
+    acc = metrics["test_accuracy"].mean()
+    prec = metrics["test_precision"].mean()
+    rec = metrics["test_recall"].mean()
+    auc = metrics["test_roc_auc"].mean()
 
     comments = []
 
     # ROC-AUC interpretation
     if auc >= 0.9:
         comments.append(
-            f"* The {model_name} model demonstrates excellent discriminative ability \n"
-            f"with an ROC-AUC of {auc:.2f}, indicating strong separation between \n"
-            f"patients with and without heart disease.\n"
+            f"* The {model_name} model demonstrates discriminative\n"
+            f"ability with an ROC-AUC of {auc:.2f}, indicating \n"
+            f"strong separation between patients heart disease.\n"
         )
     elif auc >= 0.8:
         comments.append(
-            f"* The {model_name} model shows good discrimination (ROC-AUC = {auc:.2f}), \n"
-            f"which is acceptable for clinical decision-support systems.\n"
+            f"* The {model_name} model shows good discrimination \n"
+            f"(ROC-AUC = {auc:.2f}), acceptable for clinical systems.\n"
         )
     else:
         comments.append(
-            f"* The ROC-AUC of {auc:.2f} suggests limited discriminative power, \n"
-            f"indicating the model may require further tuning or feature engineering.\n"
+            f"* The ROC-AUC of {auc:.2f} suggests limited power,\n"
+            f"indicating the model may require further tuning.\n"
         )
 
     # Recall (medical importance)
     if rec >= 0.85:
         comments.append(
-            f"* The high recall score ({rec:.2f}) indicates that the model is effective \n"
-            f"at identifying patients with heart disease, minimizing false negatives.\n"
+            f"* The high recall score ({rec:.2f}) indicates that \n"
+            f" the model is effective at identifying patients \n"
+            f" with heart disease, minimizing false negatives.\n"
         )
     elif rec >= 0.7:
         comments.append(
-            f"* The recall score ({rec:.2f}) is moderate, suggesting some true heart \n"
-            f"disease cases may be missed.\n"
+            f"* The recall score ({rec:.2f}) is moderate, suggesting\n"
+            f"some true heart disease cases may be missed.\n"
         )
     else:
         comments.append(
-            f"* The low recall score ({rec:.2f}) raises concern in a medical context, \n"
-            f"as false negatives can be clinically dangerous.\n"
+            f"* The low recall score ({rec:.2f}) raises concern in a medical\n"
+            f"context, as false negatives can be clinically dangerous.\n"
         )
 
     # Precision
     if prec >= 0.8:
         comments.append(
-            f"* A precision of {prec:.2f} indicates that most positive predictions \n"
-            f"made by the model are correct, reducing unnecessary medical follow-ups.\n"
+            f"* A precision of {prec:.2f} indicates that most positive\n"
+            f"predictions made by the model are correct,\n"
+            f"reducing unnecessary medical follow-ups.\n"
         )
     else:
         comments.append(
-            f"* The precision score ({prec:.2f}) suggests a higher false positive rate, \n"
-            f"which may lead to unnecessary diagnostic procedures.\n"
+            f"* The precision score ({prec:.2f}) suggests a higher false  \n"
+            f"positive rate, leading to unnecessary diagnostic procedures.\n"
         )
 
     # Accuracy (contextualized)
     comments.append(
-        f"* The overall accuracy of {acc:.2f} should be interpreted cautiously, \n"
-        f"as accuracy alone does not capture class imbalance or clinical risk.\n"
+        f"* The overall accuracy of {acc:.2f} interpreted cautiously,\n"
+        f"as accuracy alone does not capture class imbalance.\n"
     )
 
     # Final summary
     comments.append(
-        f"Overall, the {model_name} model provides a balanced trade-off between \n"
-        f"sensitivity and specificity, making it "
+        f"Overall, the {model_name} model provides a\n"
+        f"balanced trade-off between sensitivity and specificity, making it "
         f"{'well-suited' if auc >= 0.85 and rec >= 0.8 else 'less suitable'} "
         f"for heart disease screening applications."
     )
 
     return "\n\n".join(comments)
+
 
 print("\n")
 print(generate_model_comments("Logistic Regression", scores_lr))

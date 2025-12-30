@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def load_config(config_path: str = "config.json") -> dict:
     """
     Load JSON configuration file.

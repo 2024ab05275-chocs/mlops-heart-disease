@@ -76,9 +76,14 @@ $PYTHON -m src.models.experiment_tracking
 $PYTHON -m src.models.save_model
 
 #########################################################
-# 5. Testing
+# 5. Testing & Lint
 #########################################################
 
+echo "Step 1: Linting"
+chmod +x scripts/run_lint.sh
+bash scripts/run_lint.sh
+
+echo "Step 2: Running tests"
 pytest tests/test_download_data.py -v
 
 #########################################################

@@ -31,13 +31,16 @@ y = df["target"]
 ############################################################
 # Feature groups
 ############################################################
-categorical_features = [
-    "sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"
-]
+categorical_features = ["sex",
+                        "cp",
+                        "fbs",
+                        "restecg",
+                        "exang",
+                        "slope",
+                        "ca",
+                        "thal"]
 
-numerical_features = [
-    "age", "trestbps", "chol", "thalach", "oldpeak"
-]
+numerical_features = ["age", "trestbps", "chol", "thalach", "oldpeak"]
 
 ############################################################
 # MLflow setup
@@ -52,27 +55,25 @@ mlflow.set_experiment("Heart_Disease_Classification")
 # Logistic Regression (with pipeline)
 ############################################################
 with mlflow.start_run(run_name="Logistic_Regression"):
-
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", StandardScaler(), numerical_features),
-            ("cat", "passthrough", categorical_features)
+            ("cat", "passthrough", categorical_features),
         ]
     )
 
     lr_pipeline = Pipeline(
         steps=[
             ("preprocessing", preprocessor),
-            ("model", LogisticRegression(C=1.0, penalty="l2", max_iter=1000))
+            ("model", LogisticRegression(C=1.0, penalty="l2", max_iter=1000)),
         ]
     )
 
     scores = cross_validate(
-        lr_pipeline,
-        X,
-        y,
-        cv=5,
-        scoring=["accuracy", "precision", "recall", "roc_auc"]
+        lr_pipeline, X, y, cv=5, scoring=["accuracy",
+                                          "precision",
+                                          "recall",
+                                          "roc_auc"]
     )
 
     mlflow.log_param("model", "LogisticRegression")
@@ -93,19 +94,10 @@ with mlflow.start_run(run_name="Logistic_Regression"):
 # Random Forest
 ############################################################
 with mlflow.start_run(run_name="Random_Forest"):
-
-    rf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=5,
-        random_state=42
-    )
+    rf = RandomForestClassifier(n_estimators=200, max_depth=5, random_state=42)
 
     scores = cross_validate(
-        rf,
-        X,
-        y,
-        cv=5,
-        scoring=["accuracy", "precision", "recall", "roc_auc"]
+        rf, X, y, cv=5, scoring=["accuracy", "precision", "recall", "roc_auc"]
     )
 
     mlflow.log_param("model", "RandomForest")

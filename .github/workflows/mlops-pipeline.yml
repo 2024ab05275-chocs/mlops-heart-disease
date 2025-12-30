@@ -69,19 +69,26 @@ jobs:
       run: python -m src.models.save_model
 
     #########################################################
-    # 8. Unit Tests
+    # 8. Linting Script
+    #########################################################
+    - name: Run Linting Script
+      run: |
+        bash scripts/run_lint.sh
+
+    #########################################################
+    # 9. Unit Tests
     #########################################################
     - name: Run tests
       run: pytest tests/test_download_data.py -v
 
     #########################################################
-    # 9. Docker Build
+    # 10. Docker Build
     #########################################################
     - name: Build Docker image
       run: docker build -t heart-disease-api .
 
     #########################################################
-    # 10. Run Docker Container
+    # 11. Run Docker Container
     #########################################################
     - name: Run API container
       run: |
@@ -91,7 +98,7 @@ jobs:
           heart-disease-api
 
     #########################################################
-    # 11. Wait for API
+    # 12. Wait for API
     #########################################################
     - name: Wait for API readiness
       run: |
@@ -107,7 +114,7 @@ jobs:
         exit 1
 
     #########################################################
-    # 12. API Tests
+    # 13. API Tests
     #########################################################
     - name: Test Logistic Regression endpoint
       run: |
@@ -150,7 +157,7 @@ jobs:
         }'
 
     #########################################################
-    # 13. Cleanup
+    # 14. Cleanup
     #########################################################
     - name: Stop Docker container
       if: always()
