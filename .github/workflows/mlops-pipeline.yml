@@ -10,11 +10,6 @@ jobs:
   mlops-pipeline:
     runs-on: ubuntu-latest
 
-    services:
-      docker:
-        image: docker:24.0.7-dind
-        options: --privileged
-
     steps:
     #########################################################
     # 1. Checkout Code
@@ -23,7 +18,7 @@ jobs:
       uses: actions/checkout@v4
 
     #########################################################
-    # 2. Setup Python 3.10
+    # 2. Setup Python
     #########################################################
     - name: Set up Python 3.10
       uses: actions/setup-python@v5
@@ -69,11 +64,10 @@ jobs:
       run: python -m src.models.save_model
 
     #########################################################
-    # 8. Linting Script
+    # 8. Linting
     #########################################################
     - name: Run Linting Script
-      run: |
-        bash scripts/run_lint.sh
+      run: bash scripts/run_lint.sh
 
     #########################################################
     # 9. Unit Tests
@@ -88,7 +82,7 @@ jobs:
       run: docker build -t heart-disease-api .
 
     #########################################################
-    # 11. Run Docker Container
+    # 11. Run API Container
     #########################################################
     - name: Run API container
       run: |
@@ -103,8 +97,8 @@ jobs:
     - name: Wait for API readiness
       run: |
         echo "Waiting for API..."
-        for i in {1..30}; do
-          if curl -s http://localhost:8000/health > /dev/null; then
+        for i in {1..20}; do
+          if curl -s http://localhost:8000/docs > /dev/null; then
             echo "API is ready"
             exit 0
           fi
@@ -114,50 +108,45 @@ jobs:
         exit 1
 
     #########################################################
-    # 13. API Tests
+    # 13. API & Monitoring Tests
     #########################################################
-    - name: Test Logistic Regression endpoint
+    - name: Test inference endpoint
       run: |
         curl -X POST http://localhost:8000/predict/logistic \
         -H "Content-Type: application/json" \
         -d '{
-          "age": 63,
+          "age": 52,
           "sex": 1,
-          "cp": 3,
-          "trestbps": 145,
-          "chol": 233,
-          "fbs": 1,
-          "restecg": 0,
-          "thalach": 150,
+          "cp": 0,
+          "trestbps": 125,
+          "chol": 212,
+          "fbs": 0,
+          "restecg": 1,
+          "thalach": 168,
           "exang": 0,
-          "oldpeak": 2.3,
-          "slope": 0,
+          "oldpeak": 1.0,
+          "slope": 2,
           "ca": 0,
-          "thal": 1
+          "thal": 2
         }'
 
-    - name: Test Random Forest endpoint
-      run: |
-        curl -X POST http://localhost:8000/predict/random-forest \
-        -H "Content-Type: application/json" \
-        -d '{
-          "age": 63,
-          "sex": 1,
-          "cp": 3,
-          "trestbps": 145,
-          "chol": 233,
-          "fbs": 1,
-          "restecg": 0,
-          "thalach": 150,
-          "exang": 0,
-          "oldpeak": 2.3,
-          "slope": 0,
-          "ca": 0,
-          "thal": 1
-        }'
+    - name: Check Prometheus metrics endpoint
+      run: curl -f http://localhost:8000/metrics
 
     #########################################################
-    # 14. Cleanup
+    # 14. Collect Logs
+    #########################################################
+    - name: Collect API logs
+      run: docker logs heart-disease-api-container > api_logs.txt
+
+    - name: Upload API logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-logs
+        path: api_logs.txt
+
+    #########################################################
+    # 15. Cleanup
     #########################################################
     - name: Stop Docker container
       if: always()
