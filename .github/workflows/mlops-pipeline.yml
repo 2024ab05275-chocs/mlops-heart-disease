@@ -127,7 +127,7 @@ jobs:
 # 7. SAVE MODEL
 #########################################################
   save-model:
-    needs: train
+    needs: experiment-Tracking
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -142,7 +142,7 @@ jobs:
 # 8. BUILD (Push to GHCR)
 #########################################################
   build:
-    needs: evaluate
+    needs: save-model
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
