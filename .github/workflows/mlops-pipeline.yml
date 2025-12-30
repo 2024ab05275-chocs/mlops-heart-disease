@@ -2,172 +2,200 @@ name: MLOps Heart Disease Pipeline
 
 on:
   push:
-    branches: [ "main", "ci-mlops-pipeline" ]
+    branches: ["main", "ci-mlops-pipeline"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
+#########################################################
+# JOB 1: LINT & UNIT TESTS (FAST FEEDBACK)
+#########################################################
 jobs:
-  mlops-pipeline:
+  lint-test:
     runs-on: ubuntu-latest
 
     steps:
-    #########################################################
-    # 1. Checkout Code
-    #########################################################
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    #########################################################
-    # 2. Setup Python
-    #########################################################
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    #########################################################
-    # 3. Install Dependencies
-    #########################################################
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-    #########################################################
-    # 4. Data Pipeline
-    #########################################################
-    - name: Data acquisition
-      run: python -m src.data.data_acquisition
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Data preprocessing
-      run: python -m src.data.preprocess
+      - name: Run linting
+        run: bash scripts/run_lint.sh
 
-    #########################################################
-    # 5. Model Training
-    #########################################################
-    - name: Train Logistic Regression
-      run: python -m src.models.train_evaluate_logistic_regression
+      - name: Run unit tests
+        run: pytest tests/test_download_data.py -v
 
-    - name: Train Random Forest
-      run: python -m src.models.train_evaluate_random_forest
+#########################################################
+# JOB 2: TRAIN MODELS (MAIN BRANCH ONLY)
+#########################################################
+  train-models:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-    #########################################################
-    # 6. Experiment Tracking
-    #########################################################
-    - name: Experiment tracking
-      run: python -m src.models.experiment_tracking
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    #########################################################
-    # 7. Save Model Artifacts
-    #########################################################
-    - name: Save trained models
-      run: python -m src.models.save_model
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    #########################################################
-    # 8. Linting
-    #########################################################
-    - name: Run Linting Script
-      run: bash scripts/run_lint.sh
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-    #########################################################
-    # 9. Unit Tests
-    #########################################################
-    - name: Run tests
-      run: pytest tests/test_download_data.py -v
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    #########################################################
-    # 10. Docker Build
-    #########################################################
-    - name: Build Docker image
-      run: docker build -t heart-disease-api .
+      - name: Data acquisition
+        run: python -m src.data.data_acquisition
 
-    #########################################################
-    # 11. Run API Container
-    #########################################################
-    - name: Run API container
-      run: |
-        docker run -d --rm \
-          -p 8000:8000 \
-          --name heart-disease-api-container \
-          heart-disease-api
+      - name: Data preprocessing
+        run: python -m src.data.preprocess
 
-    #########################################################
-    # 12. Wait for API
-    #########################################################
-    - name: Wait for API readiness
-      run: |
-        echo "Waiting for API..."
-        for i in {1..20}; do
-          if curl -s http://localhost:8000/docs > /dev/null; then
-            echo "API is ready"
-            exit 0
-          fi
-          sleep 2
-        done
-        echo "API failed to start"
-        exit 1
+      - name: Train Logistic Regression
+        run: python -m src.models.train_evaluate_logistic_regression
 
-    #########################################################
-    # 13. API & Monitoring Tests
-    #########################################################
-    - name: TEST - LOGICTIC REGRESSION inference endpoint
-      run: |
-        curl -X POST http://localhost:8000/predict/logistic \
-        -H "Content-Type: application/json" \
-        -d '{
-          "age": 52,
-          "sex": 1,
-          "cp": 0,
-          "trestbps": 125,
-          "chol": 212,
-          "fbs": 0,
-          "restecg": 1,
-          "thalach": 168,
-          "exang": 0,
-          "oldpeak": 1.0,
-          "slope": 2,
-          "ca": 0,
-          "thal": 2
-        }'
+      - name: Train Random Forest
+        run: python -m src.models.train_evaluate_random_forest
 
-    - name: TEST - RANDOM FOREST inference endpoint
-      run: |
-        curl -X POST http://localhost:8000/predict/random-forest \
-        -H "Content-Type: application/json" \
-        -d '{
-          "age": 52,
-          "sex": 1,
-          "cp": 0,
-          "trestbps": 125,
-          "chol": 212,
-          "fbs": 0,
-          "restecg": 1,
-          "thalach": 168,
-          "exang": 0,
-          "oldpeak": 1.0,
-          "slope": 2,
-          "ca": 0,
-          "thal": 2
-        }'
+      - name: Experiment tracking
+        run: python -m src.models.experiment_tracking
 
-    - name: Check Prometheus metrics endpoint
-      run: curl -f http://localhost:8000/metrics
+      - name: Save trained models
+        run: python -m src.models.save_model
 
-    #########################################################
-    # 14. Collect Logs
-    #########################################################
-    - name: Collect API logs
-      run: docker logs heart-disease-api-container > api_logs.txt
+#########################################################
+# JOB 3: BUILD DOCKER IMAGE (CACHED)
+#########################################################
+  build-docker:
+    needs: train-models
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-    - name: Upload API logs
-      uses: actions/upload-artifact@v4
-      with:
-        name: api-logs
-        path: api_logs.txt
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    #########################################################
-    # 15. Cleanup
-    #########################################################
-    - name: Stop Docker container
-      if: always()
-      run: docker stop heart-disease-api-container || true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: heart-disease-api:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+#########################################################
+# JOB 4: API SMOKE & MONITORING TESTS
+#########################################################
+  api-tests:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Run API container
+        run: |
+          docker run -d --rm \
+            -p 8000:8000 \
+            --name heart-disease-api-container \
+            heart-disease-api:latest
+
+      - name: Wait for API readiness
+        run: |
+          echo "Waiting for API..."
+          for i in {1..20}; do
+            if curl -sf http://localhost:8000/docs > /dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: TEST - Logistic Regression inference
+        run: |
+          curl -f -X POST http://localhost:8000/predict/logistic \
+          -H "Content-Type: application/json" \
+          -d '{
+            "age": 52,
+            "sex": 1,
+            "cp": 0,
+            "trestbps": 125,
+            "chol": 212,
+            "fbs": 0,
+            "restecg": 1,
+            "thalach": 168,
+            "exang": 0,
+            "oldpeak": 1.0,
+            "slope": 2,
+            "ca": 0,
+            "thal": 2
+          }'
+
+      - name: TEST - Random Forest inference
+        run: |
+          curl -f -X POST http://localhost:8000/predict/random-forest \
+          -H "Content-Type: application/json" \
+          -d '{
+            "age": 52,
+            "sex": 1,
+            "cp": 0,
+            "trestbps": 125,
+            "chol": 212,
+            "fbs": 0,
+            "restecg": 1,
+            "thalach": 168,
+            "exang": 0,
+            "oldpeak": 1.0,
+            "slope": 2,
+            "ca": 0,
+            "thal": 2
+          }'
+
+      - name: Check Prometheus metrics endpoint
+        run: curl -f http://localhost:8000/metrics
+
+      - name: Collect API logs
+        if: always()
+        run: docker logs heart-disease-api-container > api_logs.txt
+
+      - name: Upload API logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs
+          path: api_logs.txt
+
+      - name: Stop Docker container
+        if: always()
+        run: docker stop heart-disease-api-container || true
