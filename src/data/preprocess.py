@@ -87,7 +87,7 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 # --------------------------------------------------------
 plt.figure(figsize=(6, 4))
 sns.countplot(x="target", data=df)
-plt.title("Class Distribution (Heart Disease)")
+plt.title("Class Distribution (Heart Dis    ease)")
 plt.xlabel("Target")
 plt.ylabel("Count")
 plt.tight_layout()
