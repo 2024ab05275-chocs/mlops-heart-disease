@@ -5,7 +5,7 @@ import numpy as np
 import time
 import logging
 import sys
-
+from fastapi import HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # -----------------------------
@@ -69,6 +69,11 @@ class HeartDiseaseInput(BaseModel):
     thal: int
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 # -----------------------------
 # Request Logging Middleware
 # -----------------------------
@@ -124,17 +129,30 @@ def predict_logistic(data: HeartDiseaseInput):
 def predict_random_forest(data: HeartDiseaseInput):
     logger.info("Inference started | model=random-forest")
 
-    X_scaled = prepare_input(data)
-    prediction = int(rf_model.predict(X_scaled)[0])
-    confidence = float(rf_model.predict_proba(X_scaled)[0][prediction])
+    if rf_model is None:
+        logger.error("Random Forest model not loaded")
+        raise HTTPException(status_code=500, detail="Model not available")
 
-    logger.info(
-        f"Inference completed | model=random-forest | "
-        f"prediction={prediction} | confidence={round(confidence, 3)}"
-    )
+    try:
+        X_scaled = prepare_input(data)
 
-    return {
-        "model": "Random Forest",
-        "prediction": prediction,
-        "confidence": round(confidence, 3),
-    }
+        probs = rf_model.predict_proba(X_scaled)[0]
+        prediction = int(probs.argmax())
+        confidence = float(probs[prediction])
+
+        logger.info(
+            f"Inference completed | model=random-forest | "
+            f"prediction={prediction} | confidence={confidence:.3f}"
+        )
+
+        return {
+            "model": "Random Forest",
+            "prediction": prediction,
+            "confidence": round(confidence, 3),
+        }
+    except Exception:
+        logger.exception("Random Forest inference failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Inference failed"
+        )
