@@ -96,35 +96,35 @@ jobs:
 # 6. BUILD
 #########################################################
   build:
-  needs: evaluate
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/heads/main'
+    needs: evaluate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    # 🔨 Build image and load it locally
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        tags: heart-disease-api:latest
-        load: true   # IMPORTANT: makes image available to docker run
+      # 🔨 Build image and load it locally
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: heart-disease-api:latest
+          load: true   # IMPORTANT: makes image available to docker run
 
-    # ▶️ Run the container
-    - name: Run Docker container
-      run: |
-        docker run -d --rm -p 8000:8000 --name heart-api heart-disease-api:latest
+      # ▶️ Run the container
+      - name: Run Docker container
+        run: |
+          docker run -d --rm -p 8000:8000 --name heart-api heart-disease-api:latest
 
-    # 🧪 Optional: health check
-    - name: Check API
-      run: |
-        sleep 5
-        curl -f http://localhost:8000/health || exit 1
+      # 🧪 Optional: health check
+      - name: Check API
+        run: |
+          sleep 5
+          curl -f http://localhost:8000/health || exit 1
 
 
 #########################################################
