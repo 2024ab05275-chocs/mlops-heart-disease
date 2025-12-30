@@ -131,6 +131,7 @@ jobs:
 # 7. DEPLOY
 #########################################################
   deploy:
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
