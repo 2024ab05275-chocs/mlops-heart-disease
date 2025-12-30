@@ -141,7 +141,7 @@ jobs:
           docker pull ${{ env.IMAGE_NAME }}:latest
           docker run -d --rm -p 8000:8000 --name heart-api ${{ env.IMAGE_NAME }}:latest
 
-#########################################################
+########################################################
 # 8. API SMOKE TEST
 #########################################################
   api-smoke-test:
@@ -159,8 +159,53 @@ jobs:
           docker run -d --rm -p 8000:8000 --name heart-api-test ${{ env.IMAGE_NAME }}:latest
           sleep 10
 
-      - name: Smoke Test API
-        run: curl -sf http://localhost:8000/docs
+      # ❤️ Health Check
+      - name: Health Check
+        run: |
+          curl -f http://localhost:8000/health
+
+      # 🤖 Logistic Regression Prediction
+      - name: Logistic Regression Prediction
+        run: |
+          curl -f -X POST http://localhost:8000/predict/logistic \
+          -H "Content-Type: application/json" \
+          -d '{
+                "age": 63,
+                "sex": 1,
+                "cp": 3,
+                "trestbps": 145,
+                "chol": 233,
+                "fbs": 1,
+                "restecg": 0,
+                "thalach": 150,
+                "exang": 0,
+                "oldpeak": 2.3,
+                "slope": 0,
+                "ca": 0,
+                "thal": 1
+              }'
+
+      # 🌲 Random Forest Prediction
+      - name: Random Forest Prediction
+        run: |
+          curl -f -X POST http://localhost:8000/predict/random-forest \
+          -H "Content-Type: application/json" \
+          -d '{
+                "age": 63,
+                "sex": 1,
+                "cp": 3,
+                "trestbps": 145,
+                "chol": 233,
+                "fbs": 1,
+                "restecg": 0,
+                "thalach": 150,
+                "exang": 0,
+                "oldpeak": 2.3,
+                "slope": 0,
+                "ca": 0,
+                "thal": 1
+              }'
+
 
 #########################################################
 # 9. MONITORING & LOGGING
