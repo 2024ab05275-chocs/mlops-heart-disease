@@ -110,9 +110,29 @@ jobs:
     #########################################################
     # 13. API & Monitoring Tests
     #########################################################
-    - name: Test inference endpoint
+    - name: TEST - LOGICTIC REGRESSION inference endpoint
       run: |
         curl -X POST http://localhost:8000/predict/logistic \
+        -H "Content-Type: application/json" \
+        -d '{
+          "age": 52,
+          "sex": 1,
+          "cp": 0,
+          "trestbps": 125,
+          "chol": 212,
+          "fbs": 0,
+          "restecg": 1,
+          "thalach": 168,
+          "exang": 0,
+          "oldpeak": 1.0,
+          "slope": 2,
+          "ca": 0,
+          "thal": 2
+        }'
+
+    - name: TEST - RANDOM FOREST inference endpoint
+      run: |
+        curl -X POST http://localhost:8000/predict/random-forest \
         -H "Content-Type: application/json" \
         -d '{
           "age": 52,
