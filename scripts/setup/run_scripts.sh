@@ -149,6 +149,14 @@ curl -X POST http://localhost:8000/predict/random-forest \
 }'
 
 #########################################################
+#  Production Deployment 
+#########################################################
+
+chmod +x scripts/run_local_k8s_ingress.sh
+./scripts/run_local_k8s_ingress.sh
+
+
+#########################################################
 # Cleanup
 #########################################################
 
