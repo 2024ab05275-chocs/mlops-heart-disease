@@ -117,36 +117,41 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
 #########################################################
-# 8. DEPLOYMENT
+# 8. DEPLOYMENT & Validation
 #########################################################
-  deployment:
+  deployment-and-validation:
     needs: container_build_and_publish
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authenticate to Authenticate to GitHub Container Registry
+      - name: Authenticate to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Deploy API Container
+      - name: Pull Docker Image
+        run: docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Run API Container
         run: |
-          docker pull ${{ env.IMAGE_NAME }}:latest
           docker run -d --rm \
             -p ${{ env.API_PORT }}:${{ env.API_PORT }} \
             --name heart-api \
             ${{ env.IMAGE_NAME }}:latest
-          sleep 10
 
-#########################################################
-# 9. POST-DEPLOYMENT VALIDATION (Smoke Tests)
-#########################################################
-  post_deployment_validation:
-    needs: deployment
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..10}; do
+            if curl -s http://localhost:8000/health; then
+              echo "✅ API is ready"
+              exit 0
+            fi
+            echo "⏳ Waiting for API..."
+            sleep 3
+          done
+          echo "❌ API did not start in time"
+          docker logs heart-api
+          exit 1
 
       - name: Health Check
         run: curl -f http://localhost:8000/health
