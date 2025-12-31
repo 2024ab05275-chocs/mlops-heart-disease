@@ -1,4 +1,4 @@
-name: MLOps Heart Disease Pipeline
+name: MLOps Heart Disease Production Pipeline
 
 on:
   push:
@@ -6,150 +6,99 @@ on:
   pull_request:
     branches: ["main"]
 
-# 🔐 Required for GHCR
 permissions:
   contents: read
   packages: write
 
-# 🐳 Shared image name
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}/heart-disease-api
+  API_PORT: 8000
 
 #########################################################
-# 1. DEPENDENCIES
+# 1. CODE QUALITY (Linting & Static Checks)
 #########################################################
 jobs:
-  dependencies:
+  code_quality_checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - uses: ./.github/actions/python-setup
+      - name: Run Linting
+        run: bash scripts/run_lint.sh
 
 #########################################################
-# 2. LINT
+# 2. UNIT TESTING
 #########################################################
-  lint:
-    needs: dependencies
+  unit_tests:
+    needs: code_quality_checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install -r requirements.txt
-      - run: bash scripts/run_lint.sh
+      - uses: ./.github/actions/python-setup
+      - name: Run Pytest Suite
+        run: pytest tests/ -v
 
 #########################################################
-# 3. UNIT TEST
+# 3. DATA PIPELINE (Ingestion + Preprocessing)
 #########################################################
-  test:
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install -r requirements.txt
-      - run: pytest tests/test_download_data.py -v
-      - run: pytest tests/test_logistic_pipeline.py -v
-      - run: pytest tests/test_random_forest.py -v
-
-#########################################################
-# 4. Data Preprocessing
-#########################################################
-  data-preprocess:
-    needs: test
+  data_pipeline:
+    needs: unit_tests
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install -r requirements.txt
-      - run: python -m src.data.data_acquisition
-      - run: python -m src.data.preprocess
+      - uses: ./.github/actions/python-setup
+      - name: Data Acquisition
+        run: python -m src.data.data_acquisition
+      - name: Data Preprocessing
+        run: python -m src.data.preprocess
 
 #########################################################
-# 5. TRAIN & Evaluate
+# 4. MODEL TRAINING & EVALUATION
 #########################################################
-  train:
-    needs: data-preprocess
+  model_training:
+    needs: data_pipeline
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install -r requirements.txt
-      - run: python -m src.models.train_evaluate_logistic_regression
-      - run: python -m src.models.train_evaluate_random_forest
-  
-  #########################################################
-  # 6. Experiment Tracking
-  #########################################################
-  experiment-Tracking:
-    needs: train
+      - uses: ./.github/actions/python-setup
+      - name: Train Logistic Regression
+        run: python -m src.models.train_evaluate_logistic_regression
+      - name: Train Random Forest
+        run: python -m src.models.train_evaluate_random_forest
+
+#########################################################
+# 5. EXPERIMENT TRACKING
+#########################################################
+  experiment_tracking:
+    needs: model_training
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run Experiment Tracking
+      - uses: ./.github/actions/python-setup
+      - name: Log Metrics & Parameters
         run: python -m src.models.experiment_tracking
 
+#########################################################
+# 6. MODEL ARTIFACT MANAGEMENT (Registry / Persistence)
+#########################################################
+  model_artifact_management:
+    needs: experiment_tracking
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: ./.github/actions/python-setup
+      - name: Save Model Artifacts
+        run: python -m src.models.save_model
 
 #########################################################
-# 7. SAVE MODEL
+# 7. CONTAINER BUILD & PUBLISH (CI → CD Boundary)
 #########################################################
-  save-model:
-    needs: experiment-Tracking
+  container_build_and_publish:
+    needs: model_artifact_management
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - run: pip install -r requirements.txt
-      - run: python -m src.models.save_model
 
-#########################################################
-# 8. BUILD (Push to GHCR)
-#########################################################
-  build:
-    needs: save-model
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to GHCR
+      - name: Authenticate to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build & Push Docker Image
@@ -162,114 +111,64 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
 #########################################################
-# 9. DEPLOY
+# 8. DEPLOYMENT
 #########################################################
-  deploy:
-    needs: build
+  deployment:
+    needs: container_build_and_publish
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
     steps:
-      - name: Login to GHCR
+      - name: Authenticate to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Pull & Run API
+      - name: Deploy API Container
         run: |
           docker pull ${{ env.IMAGE_NAME }}:latest
-          docker run -d --rm -p 8000:8000 --name heart-api ${{ env.IMAGE_NAME }}:latest
-
-########################################################
-# 10. API SMOKE TEST
-#########################################################
-  api-smoke-test:
-    needs: deploy
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Run API for testing
-        run: |
-          docker pull ${{ env.IMAGE_NAME }}:latest
-          docker run -d --rm -p 8000:8000 --name heart-api-test ${{ env.IMAGE_NAME }}:latest
+          docker run -d --rm \
+            -p ${{ env.API_PORT }}:${{ env.API_PORT }} \
+            --name heart-api \
+            ${{ env.IMAGE_NAME }}:latest
           sleep 10
 
-      # ❤️ Health Check
+#########################################################
+# 9. POST-DEPLOYMENT VALIDATION (Smoke Tests)
+#########################################################
+  post_deployment_validation:
+    needs: deployment
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
       - name: Health Check
-        run: |
-          curl -f http://localhost:8000/health
+        run: curl -f http://localhost:8000/health
 
-      # 🤖 Logistic Regression Prediction
-      - name: Logistic Regression Prediction
+      - name: Logistic Regression Inference Test
         run: |
           curl -f -X POST http://localhost:8000/predict/logistic \
           -H "Content-Type: application/json" \
-          -d '{
-                "age": 63,
-                "sex": 1,
-                "cp": 3,
-                "trestbps": 145,
-                "chol": 233,
-                "fbs": 1,
-                "restecg": 0,
-                "thalach": 150,
-                "exang": 0,
-                "oldpeak": 2.3,
-                "slope": 0,
-                "ca": 0,
-                "thal": 1
-              }'
+          -d @tests/sample_request.json
 
-      # 🌲 Random Forest Prediction
-      - name: Random Forest Prediction
+      - name: Random Forest Inference Test
         run: |
           curl -f -X POST http://localhost:8000/predict/random-forest \
           -H "Content-Type: application/json" \
-          -d '{
-                "age": 63,
-                "sex": 1,
-                "cp": 3,
-                "trestbps": 145,
-                "chol": 233,
-                "fbs": 1,
-                "restecg": 0,
-                "thalach": 150,
-                "exang": 0,
-                "oldpeak": 2.3,
-                "slope": 0,
-                "ca": 0,
-                "thal": 1
-              }'
-
+          -d @tests/sample_request.json
 
 #########################################################
-# 11. MONITORING & LOGGING
+# 10. OBSERVABILITY & LOGGING
 #########################################################
-  monitoring:
-    needs: api-smoke-test
+  observability_and_logging:
+    needs: post_deployment_validation
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
     steps:
-      - name: Login to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Run API for metrics
-        run: |
-          docker pull ${{ env.IMAGE_NAME }}:latest
-          docker run -d --rm -p 8000:8000 --name heart-api-metrics ${{ env.IMAGE_NAME }}:latest
-          sleep 10
-
-      - name: Fetch Prometheus metrics
+      - name: Fetch Prometheus Metrics
         run: curl -f http://localhost:8000/metrics
 
-      - name: Collect container logs
+      - name: Collect API Logs
         if: always()
-        run: docker logs heart-api-metrics > api_logs.txt
+        run: docker logs heart-api > api_logs.txt
 
-      - name: Upload logs
+      - name: Upload Logs Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
