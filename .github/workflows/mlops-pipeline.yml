@@ -172,7 +172,7 @@ jobs:
 # 10. OBSERVABILITY & LOGGING
 #########################################################
   observability_and_logging:
-    needs: post_deployment_validation
+    needs: deployment-and-validation
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
