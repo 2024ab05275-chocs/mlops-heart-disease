@@ -21,6 +21,7 @@ jobs:
   code_quality_checks:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Run Linting
         run: bash scripts/run_lint.sh
@@ -32,6 +33,7 @@ jobs:
     needs: code_quality_checks
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Run Pytest Suite
         run: pytest tests/ -v
@@ -44,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Data Acquisition
         run: python -m src.data.data_acquisition
@@ -51,13 +54,14 @@ jobs:
         run: python -m src.data.preprocess
 
 #########################################################
-# 4. MODEL TRAINING & EVALUATION
+# 4. MODEL TRAINING
 #########################################################
   model_training:
     needs: data_pipeline
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Train Logistic Regression
         run: python -m src.models.train_evaluate_logistic_regression
@@ -72,24 +76,26 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Log Metrics & Parameters
         run: python -m src.models.experiment_tracking
 
 #########################################################
-# 6. MODEL ARTIFACT MANAGEMENT (Registry / Persistence)
+# 6. MODEL ARTIFACT MANAGEMENT
 #########################################################
   model_artifact_management:
     needs: experiment_tracking
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/python-setup
       - name: Save Model Artifacts
         run: python -m src.models.save_model
 
 #########################################################
-# 7. CONTAINER BUILD & PUBLISH (CI → CD Boundary)
+# 7. CONTAINER BUILD & PUBLISH
 #########################################################
   container_build_and_publish:
     needs: model_artifact_management
@@ -118,7 +124,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Authenticate to GHCR
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Authenticate to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Deploy API Container
@@ -138,6 +146,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Health Check
         run: curl -f http://localhost:8000/health
 
