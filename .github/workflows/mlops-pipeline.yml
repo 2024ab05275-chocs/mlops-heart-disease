@@ -176,6 +176,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Run API Container (again)
+        run: |
+          docker run -d --rm \
+            -p 8000:8000 \
+            --name heart-api \
+            ${{ env.IMAGE_NAME }}:latest
+            sleep 10
+
       - name: Fetch Prometheus Metrics
         run: curl -f http://localhost:8000/metrics
 
