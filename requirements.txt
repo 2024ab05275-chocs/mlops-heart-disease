@@ -11,3 +11,4 @@ uvicorn
 pytest
 ruff
 prometheus-fastapi-instrumentator
+protobuf==3.20.3

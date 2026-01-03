@@ -64,9 +64,36 @@ $PYTHON -m src.models.train_evaluate_logistic_regression
 $PYTHON -m src.models.train_evaluate_random_forest
 
 #########################################################
-# 3. Experiment Tracking
+# 3. Experiment Tracking (MLflow)
 #########################################################
 
+MLFLOW_BACKEND="./mlops-heart-disease/src/mlruns/"
+MLFLOW_PORT=5000
+
+echo "📊 MLflow backend: $MLFLOW_BACKEND"
+
+# Start MLflow UI only in local (not CI)
+if [[ "$IS_CI" == false ]]; then
+  echo "🚀 Starting MLflow UI in background..."
+
+  python -m mlflow ui \
+    --backend-store-uri "$MLFLOW_BACKEND" \
+    --host 127.0.0.1 \
+    --port $MLFLOW_PORT \
+    > mlflow_ui.log 2>&1 &
+
+  MLFLOW_PID=$!
+  echo "📌 MLflow PID: $MLFLOW_PID"
+
+  # Give MLflow time to start
+  sleep 5
+
+  echo "🌐 MLflow UI running at http://127.0.0.1:$MLFLOW_PORT"
+else
+  echo "⚙️ CI detected – skipping MLflow UI startup"
+fi
+
+# Run experiment tracking logic (logging metrics, params, artifacts)
 $PYTHON -m src.models.experiment_tracking
 
 #########################################################
