@@ -13,7 +13,9 @@ INGRESS_HOST="heart.local"
 # -----------------------------
 # 0️⃣ Prerequisite Checks
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🔹 Checking prerequisites..."
+echo -e "-------------------------------------\n"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "❌ Docker CLI not found. Install Docker Desktop."
@@ -40,8 +42,9 @@ if ! kubectl get pods -n ingress-nginx >/dev/null 2>&1; then
   exit 1
 fi
 
+echo -e "\n-------------------------------------"
 echo "✅ All prerequisites verified"
-
+echo -e "-------------------------------------\n"
 # -----------------------------
 # 1️⃣ Docker cleanup
 # -----------------------------
@@ -68,22 +71,30 @@ fi
 # -----------------------------
 # 2️⃣ Build and run Docker image
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🐳 Building Docker image..."
+echo -e "-------------------------------------\n"
 docker build -t $IMAGE_NAME .
 
+echo -e "\n-------------------------------------"
 echo "🚀 Running Docker container..."
+echo -e "-------------------------------------\n"
 docker run -d --name $CONTAINER_NAME -p $PORT:8000 $IMAGE_NAME
 
 # -----------------------------
 # 3️⃣ Apply Kubernetes manifests
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "☸️ Applying Kubernetes manifests..."
+echo -e "-------------------------------------\n"
 kubectl apply -f k8s/
 
 # -----------------------------
 # 4️⃣ Restart Kubernetes pods
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "♻️ Restarting Kubernetes pods..."
+echo -e "-------------------------------------\n"
 kubectl delete pod -l app=$APP_NAME || true
 kubectl wait --for=condition=Ready pod -l app=$APP_NAME --timeout=120s
 
@@ -100,19 +111,25 @@ fi
 # -----------------------------
 # 6️⃣ Verify Ingress
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🌐 Verifying Ingress..."
+echo -e "-------------------------------------\n"
 kubectl get ingress
 
 # -----------------------------
 # 7️⃣ Test Health Endpoint
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🧪 Testing health endpoint..."
+echo -e "-------------------------------------\n"
 curl -f http://$INGRESS_HOST/health || echo "⚠️ /health failed"
 
 # -----------------------------
 # 8️⃣ Test Logistic Regression Endpoint
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🧪 Testing Logistic Regression endpoint..."
+echo -e "-------------------------------------\n"
 curl -f -X POST http://$INGRESS_HOST/predict/logistic \
   -H "Content-Type: application/json" \
   -d '{
@@ -136,7 +153,9 @@ echo ""
 # -----------------------------
 # 9️⃣ Test Random Forest Endpoint
 # -----------------------------
+echo -e "\n-------------------------------------"
 echo "🧪 Testing Random Forest endpoint..."
+echo -e "-------------------------------------\n"
 curl -f -X POST http://$INGRESS_HOST/predict/random-forest \
   -H "Content-Type: application/json" \
   -d '{
@@ -155,6 +174,8 @@ curl -f -X POST http://$INGRESS_HOST/predict/random-forest \
     "thal": 2
   }'
 
+echo -e "\n-------------------------------------"
 echo ""
 echo "✅ Local Kubernetes + Ingress deployment, Docker container restart, and endpoint verification completed successfully"
 echo "📘 Swagger UI: http://$INGRESS_HOST/docs"
+echo -e "-------------------------------------\n"
