@@ -7,6 +7,20 @@ Covers:
 - Cross-validation structure
 - ROC computation sanity
 """
+# ==================================================
+# 1️⃣ LINT ERRORS (flake8 / ruff should fail here)
+# ==================================================
+
+import os, sys, math  # ❌ E401: multiple imports on one line (lint error)
+
+def lint_error_function():
+    x=1+2    # ❌ E225: missing whitespace around operator
+    return  x  # ❌ E201: extra whitespace
+
+
+# ==================================================
+# Normal imports (pipeline will not reach all tests)
+# ==================================================
 
 import pickle
 import numpy as np
@@ -94,7 +108,9 @@ def test_roc_curve_computation():
     fpr, tpr, _ = roc_curve(y_true, y_scores)
     roc_auc = auc(fpr, tpr)
 
-    assert 0.0 <= roc_auc <= 1.0
+    # assert 0.0 <= roc_auc <= 1.0
+    # ❌ ROC AUC is always between 0 and 1 → this WILL FAIL
+    assert roc_auc > 1.0, "Intentional unit test failure: ROC AUC > 1"
 
 
 # --------------------------------------------------
@@ -102,7 +118,8 @@ def test_roc_curve_computation():
 # --------------------------------------------------
 def test_train_random_forest_pipeline_metrics():
     rf, metrics, scaler = train_random_forest_pipeline()
-
-    for key in ["accuracy", "precision", "recall", "roc_auc"]:
-        assert key in metrics
-        assert 0.0 <= metrics[key] <= 1.0
+    #for key in ["accuracy", "precision", "recall", "roc_auc"]:
+        #assert key in metrics
+        #assert 0.0 <= metrics[key] <= 1.0'''
+    # ❌ Runtime failure: key does not exist
+    print(metrics["this_key_does_not_exist"])
