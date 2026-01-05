@@ -95,6 +95,8 @@ def train_random_forest_pipeline(
     plt.close()
     return rf, rf_metrics, scaler
 
+def undefined_variable_error():
+    return not_defined_variable  # ❌ F821
 
 # Optional main guard to run as script
 if __name__ == "__main__":
